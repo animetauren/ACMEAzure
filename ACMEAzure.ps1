@@ -35,6 +35,9 @@
 .PARAMETER pfxName
     Defines the name of the pfx cert, if none is set, then Alias Cert + Current Date will be used.
     No default value.
+.PARAMETER subID
+    Defines the Azure subscription ID, if none is set, then a menu will be displayed asking to select a sub. 
+    No default value.
 .NOTES
     File Name   : ACMEAzure.ps1
     Author      : Henry Robalino - henry.robalino@outlook.com - https://anmtrn.com
@@ -56,9 +59,73 @@ param(
         [parameter(Mandatory=$true)][ValidateNotNullOrEmpty()]
         [String]$pathToPfx,
         [parameter(Mandatory=$false)][ValidateNotNullOrEmpty()]
-        [String]$pfxName
+        [String]$pfxName,
+        [parameter(Mandatory=$false)][ValidateNotNullOrEmpty()]
+        [String]$subID
 
 )
+
+function Check-Params{
+
+    $urlMod = "http://"+$url
+	try
+	{
+		$request = [System.Net.WebRequest]::Create($urlMod)
+		$request.Method = 'HEAD'
+		$response = $request.GetResponse()
+		$httpStatus = $response.StatusCode
+		$urlIsValid = ($httpStatus -eq 'OK')
+		$response.Close()
+	}
+	catch [System.Exception] {
+		$httpStatus = $null
+		Write-Verbose "URL Parameter is not correct. Exiting"
+        	Write-Verbose $_
+        	Exit
+	}
+
+    if(!(Test-Path $pathToPfx) ){
+        Write-Verbose "Path to save Pfx does not exist. Please ensure it does."
+        Exit
+    }
+
+    $EmailRegex = '^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$';
+    if ($email -notmatch $EmailRegex) {
+        Write-Verbose "Email Format was not correct. Please try again."
+        Exit
+    }
+
+}
+
+function Show-Menu{
+     cls
+     Write-Host "================ Select Subscription ================"
+     $allSub = (Get-AzureRmSubscription -ErrorAction SilentlyContinue)
+     if(!$allSub){
+        Exit
+     }
+
+     $i = 1
+     Foreach($sub in $allSub){
+        $subName = @(,$sub.SubscriptionName)
+        $subID += @(,$sub.SubscriptionId)
+
+        Write-Host "$($i): Press '$i' for $subName"
+        $i++
+     }
+     Write-Host "Q: Press 'Q' to quit."
+     $input = Read-Host
+     $subName
+     if($input -ne "q"){
+        Select-AzureRmSubscription -SubscriptionId $subID[$input-1] 
+     }
+     else{
+        Write-Verbose "Exiting Azure Subscription Login"
+        Exit
+     } 
+     $i = $null     
+
+}
 
 #Check ACMESharp Module is installed.
 function Check-ACMEModule{
@@ -77,15 +144,20 @@ function Check-ACMEModule{
 }
 
 function Initialize-KuduAPI{
-###ARM### Check this block of code esp creds section
 Write-Verbose "************[ARM Mode]************`n"
-    
-    if(!$RGName){
-        $websiteObj = Get-AzureRmWebApp -Name $webAppName -ErrorAction SilentlyContinue
-        $RGName = $websiteObj.ResourceGroup
+    try{
+        if(!$RGName){
+            $websiteObj = Get-AzureRmWebApp -Name $webAppName
+            $RGName = $websiteObj.ResourceGroup
+        }
+        else{
+            $websiteObj = Get-AzureRmWebApp -ResourceGroupName $RGName -Name $webAppName
+        }
     }
-    else{
-        $websiteObj = Get-AzureRmWebApp -ResourceGroupName $RGName -Name $webAppName
+    catch{
+        Write-Verbose $_
+        Write-Verbose "WebApp Name was typed in wrong. Exiting"
+        Exit
     }
 
     $creds = Invoke-AzureRmResourceAction -ResourceGroupName $RGName -ResourceType Microsoft.Web/sites/config -ResourceName $webAppName/publishingcredentials -Action list -ApiVersion 2015-08-01 -Force
@@ -160,8 +232,9 @@ function Check-WebConfig{
     if($checkWebConfigFile -eq $null){
     
         Write-Verbose "No Web.config File was located inside your wwwroot directory."
-        Write-Verbose "Creating Web.config File inside your wwwroot directory itwill just allows hosting of json file without extension."
+        Write-Verbose "Creating Web.config File inside your wwwroot directory this will just allow hosting of json files without extension."
         Write-Verbose "This is necessary to complete the manual http-1 challenge."
+        Write-Verbose "This will not modify or add any other access rules to your wwwroot web.config file"
 
 $WebConfigFile = @'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -261,7 +334,8 @@ function Add-ChallengeToSite{
     $acmeChallengeFile = (Get-ChildItem -Path "$Env:Temp\$acmejsonFile")
 
     Invoke-RestMethod -Uri "$apiVFSBaseUrl/site/wwwroot/.well-known/acme-challenge/$acmejsonFile" -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo); "If-Match"=("*")} -Method PUT -InFile $acmeChallengeFile 
-
+    
+    Write-Verbose "Finished creating and uploading challenge file to your site."
 }
 
 function Get-AcmeCert {
@@ -283,7 +357,7 @@ function Check-CertToSite {
     $certChecked = Get-AzureRmWebAppSSLBinding -ResourceGroupName $RGName -WebAppName $webAppName
 
     if($certChecked){
-        Write-Host "All Finished! $url has been updated with a new cert!!!" -ForegroundColor Green
+        Write-Host "All Finished! $url has been updated with the new cert!!!" -ForegroundColor Green
     }
     else{
         Write-Host "********* Woops! There was an error and your website was not updated with a new Cert, please try again!*********" -ForegroundColor Red
@@ -291,6 +365,8 @@ function Check-CertToSite {
 }
 
 function Start-ACMESharp{
+
+Check-Params
 
 Check-ACMEModule
 
@@ -344,6 +420,20 @@ Add-CertToSite
 
 Check-CertToSite
 
+}
+
+if(!$subID){
+    Show-Menu
+}
+else{
+    try{
+        Select-AzureRmSubscription -SubscriptionId $subID
+    }
+    catch{
+        Write-Verbose "Subscription ID was not valid. Exiting."
+        Write-Host $_
+        Exit
+    }
 }
 
 Start-ACMESharp
