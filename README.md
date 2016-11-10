@@ -1,7 +1,27 @@
-# ACMEAzure
+# ACME Azure
 
-ACMEAzure is a script that automates the creation of a Let's Encrypt Certificate using the ACMESharp Library to automate the procedure on windows machines. This then integrates that with Project Kudu API to automate updating your Azure WebApp Site to the latest LE Cert. This will work on both ASM and ARM WebApp Sites. 
+A powershell script to automate all your Let's Encrypt Certificates usage with Azure WebApps using ACMESharp Module.
 
-This helps in missing the gap for those who want to embrace Let's Encrypt with the power of Azure WebApps. At this moment the script can currently handle one website cert per run, but in the future will be updated to run on multiple sites for mass automation.
+## Features
 
-I will add more info as time goes on.
+-Creation of Let's Encrypt Certificate
+-Completes http01 challenge of an Azure WebApp
+-Uploads Let's Encrypt Certificate to Azure WebApp
+
+## Example
+
+ACMEAzure.ps1 -url sample.com -webAppName samplewebapp -domain "sample.com" -aliasCert "certaliasname" -email "sample@outlook.com" -pathToPfx "C:\certlocation" -pfxName "sampleCert"
+
+## Todo
+
+- Add Support for Azure DNS and DNS Challenge Handling
+
+- Add logging
+
+- Handle Certificate Passwords better, possibly a parameter 
+
+## Copyright
+
+Copyright Henry Robalino
+
+Licensed under GPLv3
