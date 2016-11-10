@@ -5,7 +5,9 @@ A powershell script to automate all your Let's Encrypt Certificates usage with A
 ## Features
 
 -Creation of Let's Encrypt Certificate
+
 -Completes http01 challenge of an Azure WebApp
+
 -Uploads Let's Encrypt Certificate to Azure WebApp
 
 ## Example
