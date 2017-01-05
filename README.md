@@ -13,10 +13,9 @@ Client implementation of the ACMESharp Library that automates and simplifies the
 
 - Upload and binds Let's Encrypt SSL Cert on Azure WebApp. 
 
-- Has support for password protected certificate. 
+- Has support for password protected certificate. (Prompted during script run)
 
 ## Requirements
-
 
 - [ACMESharp 8.1](https://github.com/ebekker/ACMESharp/)
 - [AzureRM] (https://github.com/Azure/azure-powershell)
