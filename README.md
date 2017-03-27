@@ -18,7 +18,7 @@ Client implementation of the ACMESharp Library that automates and simplifies the
 ## Requirements
 
 - [ACMESharp 8.1](https://github.com/ebekker/ACMESharp/)
-- [AzureRM] (https://github.com/Azure/azure-powershell)
+- [AzureRM](https://github.com/Azure/azure-powershell)
 
 ## Example
 
