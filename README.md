@@ -34,11 +34,7 @@ Renew certificates is currently in the works, with initial support added.
 ## Requirements
 
 - [ACMESharp 8.1](https://github.com/ebekker/ACMESharp/)
-<<<<<<< HEAD
-- [AzureRM] (https://github.com/Azure/azure-powershell) (Tested with latest edition of AzureRM at time of post.)
-=======
-- [AzureRM](https://github.com/Azure/azure-powershell)
->>>>>>> 2a2cb324c691c0b6f16ff4f2dcdeb42e52cea64e
+- [AzureRM](https://github.com/Azure/azure-powershell) (Tested with latest edition of AzureRM at time of post.)
 
 ## Example
 
