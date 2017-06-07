@@ -1,0 +1,45 @@
+{  
+    "Deployments" :[
+        "AADeployment1",
+        "AADeployment2"
+    ],
+   "AADeployment1":{  
+      "AliasCert":"aliascert",
+      "URL":[
+         "www.exmaple1.com",
+         "www.example2.com"
+      ],
+      "Email":"email@example.com",
+      "SAN":"True",
+      "AzureSubID":"0000-0000-0000-0000-0000-0000",
+      "IdentRef":[ 
+         "IdentRef1",
+         "IdentRef2"
+      ],
+      "ChallengeType":"http-01",
+      "WebApp":[
+         "webappname1",
+         "webappname2"
+      ],
+      "PFXName":"PFXName",
+      "PFXPassword":"S3cureP4assw0rd!",
+      "PFXPath":"PFXPath"
+   },
+   "AADeployment2":{  
+      "AliasCert":"aliascert",
+      "URL":[
+         "www.exmaple1.com"      ],
+      "Email":"email@example.com",
+      "SAN":"False",
+      "AzureSubID":"0000-0000-0000-0000-0000-0000",
+      "IdentRef":[
+         "IdentRef1"      ],
+      "ChallengeType":"http-01",
+      "WebApp":[
+         "webappname1"
+      ],
+      "PFXName":"PFXName",
+      "PFXPassword":"S3cureP4assw0rd!",
+      "PFXPath":"PFXPath"
+   }
+}

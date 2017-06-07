@@ -15,8 +15,6 @@
     Defines the name of the Azure WebApp Name that is currently hosting your site.
     Mandatory Parameter
     No default value.
-.PARAMETER RGName
-    Defines the name of the Resource Group if using ARM
 .PARAMETER identifierRef
     A unique idenifier that is referenced in the attempt to create a certificate. This will be submitted with your LE Request. One IdenRef is valid per Cert Request
     Mandatory parameter
@@ -24,9 +22,6 @@
     Defines the alias for the cert that will be used submitted to LE and that will be used by your website.
     Mandatory parameter
     No default value.
-.PARAMETER vaultProfile
-    Specify a name or vault profile to use, this is helpful for testing, can be either :user or :sys
-    No default Value.
 .PARAMETER renew
     Bool Param that is required when using the script to renew an existing LE Cert.
     Default set to False.
@@ -37,7 +32,7 @@
     Defines the email used to register the new Let's Encrypt SSL
     Mandatory parameter
     No default Value.
-.PARAMETER pathToPfx
+.PARAMETER challengeType
     Defines the LE Challenge Type Method to use either http or dns verification.
     Mandatory parameter
     Defaults: http-01 or dns-01
@@ -55,13 +50,15 @@
 .PARAMETER subID
     Defines the Azure subscription ID, if none is set, then a menu will be displayed asking to select a sub. 
     No default value.
+.PARAMETER dnsZone
+    Defines the Azure DNS Zone Name, this field is only mandatory if Challenge Type is DNS-01. 
+    No default value.
 .NOTES
     File Name   : ACMEAzure.ps1
     Author      : Henry Robalino - henry.robalino@outlook.com - https://anmtrn.com
-    Version     : 1.6 - May 17, 2017
+    Version     : 1.6.2 - June 7, 2017
 .TODO
     Add option to renew certs already validated.
-    Clean up certs on Azure WebApp
     Add more examples one for renew, one for san, one for renew with san.
 .EXAMPLE
     PS C:\> .\ACMEAzure.ps1 -url sample.com -webappname samplewebapp -identifierRef "sampleref1" -aliasCert "samplealiascert" -email sample@outlook.com -ChallengeType "http-01" -pathToPfx "C:\certlocation" -pfxName "sampleCert" -pfxPassword "S3cureP4assw0rd!"
@@ -84,8 +81,6 @@ param(
                 Throw "$_ is not a valid email, please use a valid email and try again."
             }
         })][string]$email,
-        [parameter(Mandatory=$false, HelpMessage='Vault Profile Name, you use :user for Staging Testing and :sys for live testing.')][ValidateSet(":user", ":sys")]
-        [String]$vaultProfile = ":sys",
         [parameter(Mandatory=$false, ParameterSetName="renew", HelpMessage='Renew flag, only set to true to renew an expiring certificate.')][ValidateNotNullOrEmpty()]
         [bool]$renew = $false,
         [parameter(Mandatory=$false, HelpMessage='SAN Flag, allows for multiple domain name registration.')][ValidateNotNullOrEmpty()]
@@ -696,16 +691,18 @@ function Renew-ACMECert($RGName){
 
 function Create-LECertInfo{
     param(
-    $pathToPfx,
-    $url,
-    $identifierRef, 
-    $date, 
-    $aliasCert,
-    $challengeType,
-    $webAppName,
-    $subID,
-    $pfxName,
-    $SAN
+    [string]$pathToPfx,
+    [string]$email,
+    [string]$url,
+    [string]$identifierRef, 
+    [string]$date, 
+    [string]$aliasCert,
+    [string]$challengeType,
+    [string]$webAppName,
+    [string]$subID,
+    [string]$pfxName,
+    [string]$SAN,
+    [string]$dnsZone
     )    
 
     Write-Verbose "Outputting Information to Text File Regarding Current LE Cert Generation..."
@@ -713,21 +710,14 @@ function Create-LECertInfo{
     $infoPath = $url + "_" + ($date) + ".txt"
     Out-File -FilePath $pathToPfx\$infoPath
     $date = Get-Date -Format MM/dd/yyyy
-    $user = (Get-AzureRmContext).Account.Id     
-    $info = `
-"AliasCert:$aliasCert
-IdentRef:$identifierRef
-URL:$url
-ChallengeType:$challengeType
-SAN:$SAN
-WebApp Name:$webAppName
-Azure SubscriptID:$subID
-Name of PFX Cert:$pfxName
-User:$user
-Date:$date"
-
-    Add-Content -LiteralPath $pathToPfx\$infoPath -Value $info
-    Write-Host "The Location of the InfoFile is: $pathToPfx\$infoPath"
+    $user = (Get-AzureRmContext).Account.Id 
+         
+    $infoTable = @{"AliasCert" = $aliasCert; IdentRef = $identifierRef; "URL" = $url; "ChallengeType" = $challengeType; `
+    "SAN" = $SAN; "WebApp Name" = $webAppName; "AzureSubID" = $subID; "pfxName" = $pfxName; "User" = $user; "DNSZone" = $dnsZone; `
+    "Date" = $date} 
+    
+    $infoTable | ConvertTo-Json | Out-File $pathToPfx\$infoPath
+    Write-Host "The Location of the InfoFile is: $pathToPfx\$infoPath" -ForegroundColor Green
 
 }
 
@@ -1000,7 +990,7 @@ else{
         Select-AzureRmSubscription -SubscriptionId $subID
     }
     catch{
-        Write-Host "Subscription ID was not valid. Exiting." -ForegroundColor Red
+        Write-Host "`nSubscription ID was not valid. Exiting...`n" -ForegroundColor Red
         Write-Host $_
         Exit
     }
@@ -1014,8 +1004,7 @@ if(!$pfxName){
     Write-Host "No name for PFX was specified, the new name for your pfx is: $pfxName`n"
 }
 
-#Set's ACME VaultProfile, default is :sys
-$env:ACMESHARP_VAULT_PROFILE = $vaultProfile
+#Checks to see if Path for the PFX is valid
 if(!([System.IO.Path]::IsPathRooted($pathToPfx))){
         Write-Host "The Path you entered is not an absolute path, the PFX Path must be an absolute path." -ForegroundColor Red
         Write-Host "Exiting..." -ForegroundColor Red
@@ -1034,6 +1023,9 @@ elseif(!(Test-Path $pathToPfx)){
         Write-Host "Path to Save PFX was created successfuly."
     }
 }
+
+#Create the JSON File with Info
+Create-LECertInfo -url $url -pathToPfx $pathToPfx -identifierRef $identifierRef -date $date -aliasCert $aliasCert -challengeType $challengeType -webAppName $webAppName -subID $subID -pfxName $pfxName -SAN $SAN -email $email -dnsZone $dnsZone
 
 if($SAN){
     Write-Verbose "SAN Flag is set to on..."
@@ -1088,5 +1080,3 @@ else{
 
     Write-Output "Finished running ACMESharp"
 }
-
-Create-LECertInfo -url $url -pathToPfx $pathToPfx -identifierRef $identifierRef -date $date -aliasCert $aliasCert -challengeType $challengeType -webAppName $webAppName -subID $subID -pfxName $pfxName -SAN $SAN

@@ -101,6 +101,20 @@ Renew certificates is currently in the works, with initial support added.
 - Implement SAN Support Fully
 - Implement Cert Renew Fully 
 
+# ACMEAzureDriver 
+ACMEAzureDriver.ps1 - An ACMESharp Deployment Script that automates the deployment of multiple ACMESharp Implementations on Azure.
+
+This driver script consumes a predefined Deployment JSON file, that contains the required information that is then passed to ACMEAzure and can launch the script for multiple websites.
+
+The sample JSON file is called acmeazuredeployment.json, you can specify on that JSON file an unlimited number of deployments, the only limitations are the LE API limits.
+
+## Example
+
+```powershell
+
+\ACMEAzureDriver.ps1 -JSONPath "C:\temp\lecertfile.json"
+```
+
 ## Copyright
 
 Copyright Henry Robalino
